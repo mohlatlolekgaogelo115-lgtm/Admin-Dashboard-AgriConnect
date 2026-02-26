@@ -6,6 +6,7 @@
     <title>Admin Dashboard - AgriConnect</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -81,6 +82,18 @@
             </div>
         </div>
 
+        <!-- REAL-TIME ANALYTICS CHARTS -->
+        <div class="grid lg:grid-cols-2 gap-8 mb-12">
+            <div class="bg-white rounded-3xl p-8 border border-gray-100">
+                <h3 class="text-xl font-bold mb-4">User Growth Over Time</h3>
+                <canvas id="user-growth-chart" height="200"></canvas>
+            </div>
+            <div class="bg-white rounded-3xl p-8 border border-gray-100">
+                <h3 class="text-xl font-bold mb-4">Listings by Category</h3>
+                <canvas id="listings-category-chart" height="200"></canvas>
+            </div>
+        </div>
+
         <!-- USERS TABLE -->
         <div class="bg-white rounded-3xl p-8 border border-gray-100 mb-12">
             <h2 class="text-3xl font-bold mb-6 flex items-center gap-3"><i class="fas fa-users text-blue-600"></i> Registered Users</h2>
@@ -90,6 +103,7 @@
                         <th class="pb-4">Name</th>
                         <th class="pb-4">Email</th>
                         <th class="pb-4">Joined</th>
+                        <th class="pb-4">Role</th>
                         <th class="pb-4">Actions</th>
                     </tr>
                 </thead>
@@ -310,11 +324,13 @@
         });
 
         function checkAdminAccess(uid) {
-            if (ADMIN_UIDS.includes(uid)) {
-                loadDashboardData();
-            } else {
-                document.getElementById('admin-access-msg').classList.remove('hidden');
-            }
+            db.ref('users/' + uid + '/role').once('value').then(snap => {
+                if (snap.val() === 'admin') {
+                    loadDashboardData();
+                } else {
+                    document.getElementById('admin-access-msg').classList.remove('hidden');
+                }
+            });
         }
 
         // ==================== AUTH MODAL ====================
@@ -337,7 +353,7 @@
             try {
                 const cred = await auth.createUserWithEmailAndPassword(email, pass);
                 await cred.user.updateProfile({ displayName: name });
-                await db.ref('users/' + cred.user.uid).set({ name, email, joined: Date.now() });
+                await db.ref('users/' + cred.user.uid).set({ name, email, joined: Date.now(), role: 'user' });
                 showToast(`Welcome ${name}!`);
                 closeAuthModal();
             } catch (e) { showToast(e.message, true); }
@@ -365,17 +381,24 @@
                 document.getElementById('users-count').textContent = snap.numChildren();
                 const table = document.getElementById('users-table');
                 table.innerHTML = '';
+                const userDates = [];
                 snap.forEach(child => {
                     const u = child.val();
+                    userDates.push({ date: new Date(u.joined).toLocaleDateString(), count: 1 });
                     table.innerHTML += `
                         <tr class="border-b last:border-none">
                             <td class="py-4">${u.name}</td>
                             <td class="py-4">${u.email}</td>
                             <td class="py-4">${new Date(u.joined).toLocaleDateString()}</td>
-                            <td class="py-4"><button onclick="deleteUser('${child.key}')" class="text-red-600 hover:text-red-800">Delete</button></td>
+                            <td class="py-4">${u.role || 'user'}</td>
+                            <td class="py-4">
+                                <button onclick="editUserRole('${child.key}', '${u.role || 'user'}')" class="text-blue-600 hover:text-blue-800 mr-2">Edit Role</button>
+                                <button onclick="deleteUser('${child.key}')" class="text-red-600 hover:text-red-800">Delete</button>
+                            </td>
                         </tr>
                     `;
                 });
+                updateUserGrowthChart(userDates);
             });
 
             // Listings
@@ -383,8 +406,10 @@
                 document.getElementById('listings-count').textContent = snap.numChildren();
                 const table = document.getElementById('listings-table');
                 table.innerHTML = '';
+                const categories = { maize: 0, vegetables: 0, fruits: 0, grains: 0, other: 0 };
                 snap.forEach(child => {
                     const l = child.val();
+                    categories[l.category || 'other']++;
                     table.innerHTML += `
                         <tr class="border-b last:border-none">
                             <td class="py-4">${l.title}</td>
@@ -392,10 +417,14 @@
                             <td class="py-4">${l.price}</td>
                             <td class="py-4">${l.quantity}</td>
                             <td class="py-4">${new Date(l.posted).toLocaleDateString()}</td>
-                            <td class="py-4"><button onclick="deleteListing('${child.key}')" class="text-red-600 hover:text-red-800">Delete</button></td>
+                            <td class="py-4">
+                                <button onclick="editListing('${child.key}', '${l.title}', ${l.price}, ${l.quantity}, '${l.location}')" class="text-blue-600 hover:text-blue-800 mr-2">Edit</button>
+                                <button onclick="deleteListing('${child.key}')" class="text-red-600 hover:text-red-800">Delete</button>
+                            </td>
                         </tr>
                     `;
                 });
+                updateListingsCategoryChart(categories);
             });
 
             // Advice
@@ -416,7 +445,10 @@
                                     <td class="py-4">${a.query}</td>
                                     <td class="py-4">${a.response.substring(0, 50)}...</td>
                                     <td class="py-4">${new Date(a.timestamp).toLocaleDateString()}</td>
-                                    <td class="py-4"><button onclick="deleteAdvice('${userSnap.key}', '${child.key}')" class="text-red-600 hover:text-red-800">Delete</button></td>
+                                    <td class="py-4">
+                                        <button onclick="editAdvice('${userSnap.key}', '${child.key}', '${a.query}', '${a.response}')" class="text-blue-600 hover:text-blue-800 mr-2">Edit</button>
+                                        <button onclick="deleteAdvice('${userSnap.key}', '${child.key}')" class="text-red-600 hover:text-red-800">Delete</button>
+                                    </td>
                                 </tr>
                             `;
                         });
@@ -444,7 +476,10 @@
                                     <td class="py-4">${app.purpose.substring(0, 50)}...</td>
                                     <td class="py-4">${app.status}</td>
                                     <td class="py-4">${new Date(app.date).toLocaleDateString()}</td>
-                                    <td class="py-4"><button onclick="deleteApplication('${userSnap.key}', '${child.key}')" class="text-red-600 hover:text-red-800">Delete</button></td>
+                                    <td class="py-4">
+                                        <button onclick="editApplication('${userSnap.key}', '${child.key}', '${app.type}', ${app.amount}, '${app.purpose}', '${app.status}')" class="text-blue-600 hover:text-blue-800 mr-2">Edit</button>
+                                        <button onclick="deleteApplication('${userSnap.key}', '${child.key}')" class="text-red-600 hover:text-red-800">Delete</button>
+                                    </td>
                                 </tr>
                             `;
                         });
@@ -453,29 +488,101 @@
             });
         }
 
+        // ==================== ANALYTICS CHARTS ====================
+        let userGrowthChart, listingsCategoryChart;
+
+        function updateUserGrowthChart(data) {
+            const ctx = document.getElementById('user-growth-chart').getContext('2d');
+            const dates = data.map(d => d.date);
+            const counts = data.map(d => d.count);
+            if (userGrowthChart) userGrowthChart.destroy();
+            userGrowthChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{ label: 'New Users', data: counts, borderColor: '#15803d', fill: false }]
+                },
+                options: { responsive: true, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        function updateListingsCategoryChart(categories) {
+            const ctx = document.getElementById('listings-category-chart').getContext('2d');
+            if (listingsCategoryChart) listingsCategoryChart.destroy();
+            listingsCategoryChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(categories),
+                    datasets: [{ data: Object.values(categories), backgroundColor: ['#15803d', '#16a34a', '#22c55e', '#4ade80', '#86efac'] }]
+                },
+                options: { responsive: true }
+            });
+        }
+
+        // ==================== EDIT FUNCTIONS ====================
+        async function editUserRole(uid, currentRole) {
+            const newRole = prompt('Enter new role (user/admin):', currentRole);
+            if (newRole && ['user', 'admin'].includes(newRole)) {
+                await db.ref('users/' + uid + '/role').set(newRole);
+                showToast('Role updated');
+            }
+        }
+
+        async function editListing(id, title, price, quantity, location) {
+            const newTitle = prompt('Edit title:', title);
+            const newPrice = parseFloat(prompt('Edit price:', price));
+            const newQuantity = parseFloat(prompt('Edit quantity:', quantity));
+            const newLocation = prompt('Edit location:', location);
+            if (newTitle && !isNaN(newPrice) && !isNaN(newQuantity)) {
+                await db.ref('listings/' + id).update({ title: newTitle, price: newPrice, quantity: newQuantity, location: newLocation });
+                showToast('Listing updated');
+            }
+        }
+
+        async function editAdvice(userId, id, query, response) {
+            const newQuery = prompt('Edit query:', query);
+            const newResponse = prompt('Edit response:', response);
+            if (newQuery && newResponse) {
+                await db.ref('advice/' + userId + '/' + id).update({ query: newQuery, response: newResponse });
+                showToast('Advice updated');
+            }
+        }
+
+        async function editApplication(userId, id, type, amount, purpose, status) {
+            const newType = prompt('Edit type:', type);
+            const newAmount = parseFloat(prompt('Edit amount:', amount));
+            const newPurpose = prompt('Edit purpose:', purpose);
+            const newStatus = prompt('Edit status (Pending/Approved/Rejected):', status);
+            if (newType && !isNaN(newAmount) && newPurpose && newStatus) {
+                await db.ref('applications/' + userId + '/' + id).update({ type: newType, amount: newAmount, purpose: newPurpose, status: newStatus });
+                showToast('Application updated');
+            }
+        }
+
+        // ==================== DELETE FUNCTIONS (with double confirmation) ====================
         async function deleteUser(uid) {
-            if (confirm('Delete this user?')) {
+            if (confirm('Delete this user?') && prompt('Type "DELETE" to confirm:') === 'DELETE') {
                 await db.ref('users/' + uid).remove();
                 showToast('User deleted');
             }
         }
 
         async function deleteListing(id) {
-            if (confirm('Delete this listing?')) {
+            if (confirm('Delete this listing?') && prompt('Type "DELETE" to confirm:') === 'DELETE') {
                 await db.ref('listings/' + id).remove();
                 showToast('Listing deleted');
             }
         }
 
         async function deleteAdvice(userId, id) {
-            if (confirm('Delete this advice?')) {
+            if (confirm('Delete this advice?') && prompt('Type "DELETE" to confirm:') === 'DELETE') {
                 await db.ref('advice/' + userId + '/' + id).remove();
                 showToast('Advice deleted');
             }
         }
 
         async function deleteApplication(userId, id) {
-            if (confirm('Delete this application?')) {
+            if (confirm('Delete this application?') && prompt('Type "DELETE" to confirm:') === 'DELETE') {
                 await db.ref('applications/' + userId + '/' + id).remove();
                 showToast('Application deleted');
             }

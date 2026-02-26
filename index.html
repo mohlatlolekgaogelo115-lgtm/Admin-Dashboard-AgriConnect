@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - AgriConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .hero-gradient { background: linear-gradient(135deg, #166534 0%, #15803d 100%); }
+        .stat-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .stat-card:hover { transform: translateY(-6px); }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+    <!-- NAV -->
+    <nav class="sticky top-0 z-50 glass border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-2">
+                    <div class="bg-green-600 p-2 rounded-lg">
+                        <i class="fas fa-seedling text-white text-xl"></i>
+                    </div>
+                    <a href="index.html" class="text-2xl font-bold text-green-800 tracking-tight">AgriConnect</a>
+                </div>
+                <div class="hidden md:flex space-x-8 font-medium">
+                    <a href="index.html" class="hover:text-green-600 transition">Home</a>
+                    <a href="marketplace.html" class="hover:text-green-600 transition">Marketplace</a>
+                    <a href="advisory.html" class="hover:text-green-600 transition">Advisory</a>
+                    <a href="financing.html" class="hover:text-green-600 transition">Financing</a>
+                    <a href="#" class="text-green-700 font-semibold border-b-2 border-green-700 pb-1">Admin Dashboard</a>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="user-greeting" class="hidden text-sm font-medium text-green-700"></span>
+                    <button id="auth-btn" onclick="openAuthModal()"
+                        class="bg-green-700 text-white px-6 py-2 rounded-full font-semibold hover:bg-green-800 transition shadow-lg">
+                        Get Started
+                    </button>
+                    <button id="logout-btn" onclick="logout()" class="hidden bg-red-100 text-red-700 px-5 py-2 rounded-full font-semibold hover:bg-red-200 transition">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ADMIN DASHBOARD HEADER -->
+    <header class="bg-white py-16 border-b">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <span class="bg-green-100 text-green-700 px-5 py-1.5 rounded-full text-sm font-semibold">ADMIN • REAL-TIME MONITORING</span>
+            <h1 class="text-6xl font-extrabold text-gray-900 mt-6">Admin Dashboard</h1>
+            <p class="mt-4 text-xl text-gray-600 max-w-2xl mx-auto">Monitor users, listings, advisory, and financing in real-time. Powered by Firebase Realtime Database.</p>
+        </div>
+    </header>
+
+    <!-- DASHBOARD CONTENT -->
+    <section class="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" id="admin-content">
+        <div id="admin-access-msg" class="hidden bg-red-50 border border-red-100 p-8 rounded-3xl text-center text-red-600 font-semibold mb-12">
+            Access denied. Only admins can view this dashboard. Please login as admin.
+        </div>
+        <div class="grid lg:grid-cols-4 gap-8 mb-12">
+            <div class="stat-card bg-white rounded-3xl p-8 border border-gray-100 col-span-1">
+                <h3 class="text-xl font-bold mb-4 flex items-center gap-3"><i class="fas fa-users text-blue-600"></i> Total Users</h3>
+                <p id="users-count" class="text-5xl font-bold text-green-700">0</p>
+            </div>
+            <div class="stat-card bg-white rounded-3xl p-8 border border-gray-100 col-span-1">
+                <h3 class="text-xl font-bold mb-4 flex items-center gap-3"><i class="fas fa-shopping-cart text-orange-600"></i> Active Listings</h3>
+                <p id="listings-count" class="text-5xl font-bold text-green-700">0</p>
+            </div>
+            <div class="stat-card bg-white rounded-3xl p-8 border border-gray-100 col-span-1">
+                <h3 class="text-xl font-bold mb-4 flex items-center gap-3"><i class="fas fa-lightbulb text-yellow-600"></i> Advice Entries</h3>
+                <p id="advice-count" class="text-5xl font-bold text-green-700">0</p>
+            </div>
+            <div class="stat-card bg-white rounded-3xl p-8 border border-gray-100 col-span-1">
+                <h3 class="text-xl font-bold mb-4 flex items-center gap-3"><i class="fas fa-dollar-sign text-green-600"></i> Financing Apps</h3>
+                <p id="applications-count" class="text-5xl font-bold text-green-700">0</p>
+            </div>
+        </div>
+
+        <!-- USERS TABLE -->
+        <div class="bg-white rounded-3xl p-8 border border-gray-100 mb-12">
+            <h2 class="text-3xl font-bold mb-6 flex items-center gap-3"><i class="fas fa-users text-blue-600"></i> Registered Users</h2>
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b">
+                        <th class="pb-4">Name</th>
+                        <th class="pb-4">Email</th>
+                        <th class="pb-4">Joined</th>
+                        <th class="pb-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="users-table">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- LISTINGS TABLE -->
+        <div class="bg-white rounded-3xl p-8 border border-gray-100 mb-12">
+            <h2 class="text-3xl font-bold mb-6 flex items-center gap-3"><i class="fas fa-shopping-cart text-orange-600"></i> Marketplace Listings</h2>
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b">
+                        <th class="pb-4">Title</th>
+                        <th class="pb-4">Seller</th>
+                        <th class="pb-4">Price (R)</th>
+                        <th class="pb-4">Quantity</th>
+                        <th class="pb-4">Posted</th>
+                        <th class="pb-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="listings-table">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ADVICE TABLE -->
+        <div class="bg-white rounded-3xl p-8 border border-gray-100 mb-12">
+            <h2 class="text-3xl font-bold mb-6 flex items-center gap-3"><i class="fas fa-lightbulb text-yellow-600"></i> Advisory Entries</h2>
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b">
+                        <th class="pb-4">User</th>
+                        <th class="pb-4">Query</th>
+                        <th class="pb-4">Response</th>
+                        <th class="pb-4">Date</th>
+                        <th class="pb-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="advice-table">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- APPLICATIONS TABLE -->
+        <div class="bg-white rounded-3xl p-8 border border-gray-100">
+            <h2 class="text-3xl font-bold mb-6 flex items-center gap-3"><i class="fas fa-dollar-sign text-green-600"></i> Financing Applications</h2>
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b">
+                        <th class="pb-4">User</th>
+                        <th class="pb-4">Type</th>
+                        <th class="pb-4">Amount (R)</th>
+                        <th class="pb-4">Purpose</th>
+                        <th class="pb-4">Status</th>
+                        <th class="pb-4">Date</th>
+                        <th class="pb-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="applications-table">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- AUTH MODAL (exactly same) -->
+    <div id="authModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
+        <div class="bg-white rounded-3xl w-full max-w-md mx-4 shadow-2xl">
+            <div class="flex border-b">
+                <button onclick="switchAuthTab(0)" id="tab-signup" class="flex-1 py-5 font-semibold text-green-700 border-b-2 border-green-700">Sign Up</button>
+                <button onclick="switchAuthTab(1)" id="tab-signin" class="flex-1 py-5 font-semibold text-gray-500">Sign In</button>
+            </div>
+            <div class="p-8">
+                <div id="signup-form">
+                    <input id="signup-name" type="text" placeholder="Full Name" class="w-full px-5 py-4 border border-gray-300 rounded-2xl mb-4">
+                    <input id="signup-email" type="email" placeholder="Email" class="w-full px-5 py-4 border border-gray-300 rounded-2xl mb-4">
+                    <input id="signup-password" type="password" placeholder="Password (min 6)" class="w-full px-5 py-4 border border-gray-300 rounded-2xl mb-6">
+                    <button onclick="signUp()" class="w-full bg-green-700 text-white py-4 rounded-2xl font-bold text-lg">Create Farmer Account</button>
+                </div>
+                <div id="signin-form" class="hidden">
+                    <input id="signin-email" type="email" placeholder="Email" class="w-full px-5 py-4 border border-gray-300 rounded-2xl mb-4">
+                    <input id="signin-password" type="password" placeholder="Password" class="w-full px-5 py-4 border border-gray-300 rounded-2xl mb-6">
+                    <button onclick="signIn()" class="w-full bg-green-700 text-white py-4 rounded-2xl font-bold text-lg">Login to Marketplace</button>
+                </div>
+            </div>
+            <div class="px-8 pb-8 text-center text-sm text-gray-500">
+                <button onclick="closeAuthModal()" class="underline">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST (exactly same) -->
+    <div id="toast" class="hidden fixed bottom-8 right-8 bg-green-700 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3">
+        <span id="toast-text"></span>
+    </div>
+
+    <footer class="bg-gray-900 text-gray-300 py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12">
+                <div class="lg:col-span-5">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="bg-green-600 p-3 rounded-2xl">
+                            <i class="fas fa-seedling text-3xl text-white"></i>
+                        </div>
+                        <span class="text-3xl font-bold tracking-tighter">AgriConnect</span>
+                    </div>
+                    <p class="text-gray-400 max-w-md leading-relaxed">
+                        Empowering South African smallholder farmers with direct market access, 
+                        smart advisory, and fair financing. Growing together since 2026.
+                    </p>
+                    <div class="flex gap-6 mt-10 text-xl">
+                        <a href="#" class="hover:text-green-400 transition"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="hover:text-green-400 transition"><i class="fab fa-x-twitter"></i></a>
+                        <a href="#" class="hover:text-green-400 transition"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="hover:text-green-400 transition"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#" class="hover:text-green-400 transition"><i class="fab fa-whatsapp"></i></a>
+                    </div>
+                </div>
+                <div class="lg:col-span-2">
+                    <h4 class="font-semibold text-white text-lg mb-6">Platform</h4>
+                    <ul class="space-y-4">
+                        <li><a href="index.html" class="hover:text-white transition">Home</a></li>
+                        <li><a href="marketplace.html" class="hover:text-white transition">Marketplace</a></li>
+                        <li><a href="advisory.html" class="hover:text-white transition">Advisory</a></li>
+                        <li><a href="financing.html" class="hover:text-white transition">Financing</a></li>
+                    </ul>
+                </div>
+                <div class="lg:col-span-2">
+                    <h4 class="font-semibold text-white text-lg mb-6">Company</h4>
+                    <ul class="space-y-4">
+                        <li><a href="#" class="hover:text-white transition">About Us</a></li>
+                        <li><a href="#" class="hover:text-white transition">Our Farmers</a></li>
+                        <li><a href="#" class="hover:text-white transition">Impact Stories</a></li>
+                        <li><a href="#" class="hover:text-white transition">Careers</a></li>
+                    </ul>
+                </div>
+                <div class="lg:col-span-3">
+                    <h4 class="font-semibold text-white text-lg mb-6">Get in Touch</h4>
+                    <div class="space-y-4 text-sm">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-envelope mt-1"></i>
+                            <div>
+                                <div>info@agriconnect.co.za</div>
+                                <div class="text-xs text-gray-500">Support available 7 days a week</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-phone mt-1"></i>
+                            <div>+27 67 890 1234</div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-map-marker-alt mt-1"></i>
+                            <div>Johannesburg, Gauteng<br>South Africa</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-16 pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500">
+                <div>© 2026 AgriConnect South Africa. All Rights Reserved.</div>
+                <div class="flex gap-8">
+                    <a href="#" class="hover:text-white transition">Privacy Policy</a>
+                    <a href="#" class="hover:text-white transition">Terms of Service</a>
+                    <a href="#" class="hover:text-white transition">Farmer Safety</a>
+                </div>
+                <div class="text-green-400">🌱 Powered by Firebase Realtime Database</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- FIREBASE SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+
+    <script>
+        // ==================== FIREBASE CONFIG ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDQZFUK4hnd-_lHUCfi_EHZ1gMM7p1rurE",
+            authDomain: "agriconnect-a813a.firebaseapp.com",
+            projectId: "agriconnect-a813a",
+            storageBucket: "agriconnect-a813a.firebasestorage.app",
+            messagingSenderId: "426251328870",
+            appId: "1:426251328870:web:742e51f276a1206d10fca7",
+            measurementId: "G-LERNRKQ4S7"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let currentUser = null;
+        const ADMIN_UIDS = ['your_admin_uid_here'];  // Replace with actual admin UIDs for security
+
+        // ==================== AUTH STATE ====================
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            const greeting = document.getElementById('user-greeting');
+            const authBtn = document.getElementById('auth-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            if (user) {
+                greeting.textContent = `Hi, ${user.displayName || 'Admin'}!`;
+                greeting.classList.remove('hidden');
+                authBtn.classList.add('hidden');
+                logoutBtn.classList.remove('hidden');
+                checkAdminAccess(user.uid);
+            } else {
+                greeting.classList.add('hidden');
+                authBtn.classList.remove('hidden');
+                logoutBtn.classList.add('hidden');
+                document.getElementById('admin-access-msg').classList.remove('hidden');
+            }
+        });
+
+        function checkAdminAccess(uid) {
+            if (ADMIN_UIDS.includes(uid)) {
+                loadDashboardData();
+            } else {
+                document.getElementById('admin-access-msg').classList.remove('hidden');
+            }
+        }
+
+        // ==================== AUTH MODAL ====================
+        function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); switchAuthTab(0); }
+        function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
+        function switchAuthTab(n) {
+            document.getElementById('signup-form').classList.toggle('hidden', n === 1);
+            document.getElementById('signin-form').classList.toggle('hidden', n === 0);
+            document.getElementById('tab-signup').classList.toggle('border-b-2', n === 0);
+            document.getElementById('tab-signup').classList.toggle('text-green-700', n === 0);
+            document.getElementById('tab-signin').classList.toggle('border-b-2', n === 1);
+            document.getElementById('tab-signin').classList.toggle('text-green-700', n === 1);
+        }
+
+        async function signUp() {
+            const name = document.getElementById('signup-name').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
+            const pass = document.getElementById('signup-password').value;
+            if (!email || !pass || pass.length < 6) return showToast("Check your details", true);
+            try {
+                const cred = await auth.createUserWithEmailAndPassword(email, pass);
+                await cred.user.updateProfile({ displayName: name });
+                await db.ref('users/' + cred.user.uid).set({ name, email, joined: Date.now() });
+                showToast(`Welcome ${name}!`);
+                closeAuthModal();
+            } catch (e) { showToast(e.message, true); }
+        }
+
+        async function signIn() {
+            const email = document.getElementById('signin-email').value;
+            const pass = document.getElementById('signin-password').value;
+            try {
+                await auth.signInWithEmailAndPassword(email, pass);
+                showToast("Logged in successfully!");
+                closeAuthModal();
+            } catch (e) { showToast(e.message, true); }
+        }
+
+        function logout() {
+            auth.signOut();
+            showToast("Logged out");
+        }
+
+        // ==================== DASHBOARD DATA ====================
+        function loadDashboardData() {
+            // Users
+            db.ref('users').on('value', snap => {
+                document.getElementById('users-count').textContent = snap.numChildren();
+                const table = document.getElementById('users-table');
+                table.innerHTML = '';
+                snap.forEach(child => {
+                    const u = child.val();
+                    table.innerHTML += `
+                        <tr class="border-b last:border-none">
+                            <td class="py-4">${u.name}</td>
+                            <td class="py-4">${u.email}</td>
+                            <td class="py-4">${new Date(u.joined).toLocaleDateString()}</td>
+                            <td class="py-4"><button onclick="deleteUser('${child.key}')" class="text-red-600 hover:text-red-800">Delete</button></td>
+                        </tr>
+                    `;
+                });
+            });
+
+            // Listings
+            db.ref('listings').on('value', snap => {
+                document.getElementById('listings-count').textContent = snap.numChildren();
+                const table = document.getElementById('listings-table');
+                table.innerHTML = '';
+                snap.forEach(child => {
+                    const l = child.val();
+                    table.innerHTML += `
+                        <tr class="border-b last:border-none">
+                            <td class="py-4">${l.title}</td>
+                            <td class="py-4">${l.seller}</td>
+                            <td class="py-4">${l.price}</td>
+                            <td class="py-4">${l.quantity}</td>
+                            <td class="py-4">${new Date(l.posted).toLocaleDateString()}</td>
+                            <td class="py-4"><button onclick="deleteListing('${child.key}')" class="text-red-600 hover:text-red-800">Delete</button></td>
+                        </tr>
+                    `;
+                });
+            });
+
+            // Advice
+            db.ref('advice').on('value', snap => {
+                let count = 0;
+                snap.forEach(userSnap => count += userSnap.numChildren());
+                document.getElementById('advice-count').textContent = count;
+                const table = document.getElementById('advice-table');
+                table.innerHTML = '';
+                snap.forEach(userSnap => {
+                    userSnap.forEach(child => {
+                        const a = child.val();
+                        db.ref('users/' + userSnap.key).once('value').then(userData => {
+                            const userName = userData.val()?.name || 'Unknown';
+                            table.innerHTML += `
+                                <tr class="border-b last:border-none">
+                                    <td class="py-4">${userName}</td>
+                                    <td class="py-4">${a.query}</td>
+                                    <td class="py-4">${a.response.substring(0, 50)}...</td>
+                                    <td class="py-4">${new Date(a.timestamp).toLocaleDateString()}</td>
+                                    <td class="py-4"><button onclick="deleteAdvice('${userSnap.key}', '${child.key}')" class="text-red-600 hover:text-red-800">Delete</button></td>
+                                </tr>
+                            `;
+                        });
+                    });
+                });
+            });
+
+            // Applications
+            db.ref('applications').on('value', snap => {
+                let count = 0;
+                snap.forEach(userSnap => count += userSnap.numChildren());
+                document.getElementById('applications-count').textContent = count;
+                const table = document.getElementById('applications-table');
+                table.innerHTML = '';
+                snap.forEach(userSnap => {
+                    userSnap.forEach(child => {
+                        const app = child.val();
+                        db.ref('users/' + userSnap.key).once('value').then(userData => {
+                            const userName = userData.val()?.name || 'Unknown';
+                            table.innerHTML += `
+                                <tr class="border-b last:border-none">
+                                    <td class="py-4">${userName}</td>
+                                    <td class="py-4">${app.type}</td>
+                                    <td class="py-4">${app.amount}</td>
+                                    <td class="py-4">${app.purpose.substring(0, 50)}...</td>
+                                    <td class="py-4">${app.status}</td>
+                                    <td class="py-4">${new Date(app.date).toLocaleDateString()}</td>
+                                    <td class="py-4"><button onclick="deleteApplication('${userSnap.key}', '${child.key}')" class="text-red-600 hover:text-red-800">Delete</button></td>
+                                </tr>
+                            `;
+                        });
+                    });
+                });
+            });
+        }
+
+        async function deleteUser(uid) {
+            if (confirm('Delete this user?')) {
+                await db.ref('users/' + uid).remove();
+                showToast('User deleted');
+            }
+        }
+
+        async function deleteListing(id) {
+            if (confirm('Delete this listing?')) {
+                await db.ref('listings/' + id).remove();
+                showToast('Listing deleted');
+            }
+        }
+
+        async function deleteAdvice(userId, id) {
+            if (confirm('Delete this advice?')) {
+                await db.ref('advice/' + userId + '/' + id).remove();
+                showToast('Advice deleted');
+            }
+        }
+
+        async function deleteApplication(userId, id) {
+            if (confirm('Delete this application?')) {
+                await db.ref('applications/' + userId + '/' + id).remove();
+                showToast('Application deleted');
+            }
+        }
+
+        function showToast(msg, error = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-text').innerHTML = msg;
+            toast.style.backgroundColor = error ? '#dc2626' : '#15803d';
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 4000);
+        }
+
+        // ==================== INIT ====================
+        window.onload = () => {
+            console.log("%c✅ AgriConnect Admin Dashboard is LIVE with Firebase Realtime Database", "color:#166534;font-size:15px;font-weight:bold");
+        };
+    </script>
+</body>
+</html>
